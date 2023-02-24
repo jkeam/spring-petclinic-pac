@@ -1,0 +1,17 @@
+image: openshift/origin-cli
+
+stages:
+  - build
+
+.openshift_job:
+  image: openshift/origin-cli
+  before_script:
+    - oc login "$OPENSHIFT_SERVER" --token="$OPENSHIFT_TOKEN" --insecure-skip-tls-verify
+    - oc project $OPENSHIFT_PROJECTNAME 2> /dev/null || oc new-project $OPENSHIFT_PROJECTNAME
+
+build:
+  extends: .openshift_job
+  stage: build
+  script:
+    - oc start-build spring-petclinic --follow --from-dir .
+    - echo "Build successful"
