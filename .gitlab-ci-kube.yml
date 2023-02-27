@@ -1,0 +1,49 @@
+image: registry.access.redhat.com/ubi9/openjdk-17@sha256:1478fc79fbf7a8445201b62ce8e37b57a4913c16545f71a288a7fb0fa6a1639e
+
+stages:
+  - build
+  - test
+  - package
+  - build_image
+  - deploy
+
+build:
+  stage: build
+  script:
+    - mvn compile
+    - echo "Build successful"
+
+test:
+  stage: test
+  script:
+    - mvn test
+    - echo "Test successful"
+
+package:
+  stage: package
+  script:
+    - mvn package -U -DskipTests
+    - echo "Package successful"
+  artifacts:
+    paths:
+      - target/spring-petclinic-*.jar
+
+build_image:
+  stage: build_image
+  image: quay.io/podman/stable:v4.4.1
+  needs:
+    - job: package
+      artifacts: true
+  script:
+    - su podman -c "podman build -t quay.io/$REGISTRY_ORG/spring-petclinic-demo:$CI_PIPELINE_ID -f ./Dockerfile"
+    - su podman -c "podman push --creds=$REGISTRY_USERNAME:$REGISTRY_PASSWORD quay.io/$REGISTRY_ORG/spring-petclinic-demo:$CI_PIPELINE_ID"
+
+deploy:
+  stage: deploy
+  image: docker.io/bitnami/kubectl:1.24.10
+  script:
+    - mkdir /tmp/.kube
+    - echo $KUBE_CONFIG | base64 -d > $KUBECONFIG
+    - sed -i "s/latest/$CI_PIPELINE_ID/g" deployment.yaml
+    - cat deployment.yaml
+    - kubectl apply -f deployment.yaml --kubeconfig $KUBECONFIG
