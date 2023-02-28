@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spring-petclinic
+  namespace: gitlab-spring-petclinic
+  labels:
+    app: spring-petclinic
+spec:
+  selector:
+    matchLabels:
+      app: spring-petclinic
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: spring-petclinic
+    spec:
+      containers:
+        - image: quay.io/jkeam/spring-petclinic-demo:latest
+          name: spring-petclinic
+          ports:
+          - containerPort: 8080
+            name: theport
+      restartPolicy: Always
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: spring-petclinic
+  namespace: gitlab-spring-petclinic
+  labels:
+    app: spring-petclinic
+spec:
+  ports:
+    - name: port8080
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: spring-petclinic
+  type: ClusterIP
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: spring-petclinic
+  namespace: gitlab-spring-petclinic
+  labels:
+    app: spring-petclinic
+spec:
+  defaultBackend:
+    service:
+      name: spring-petclinic
+      port:
+        number: 8080
